@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropDash: Free-Fall Timing Game</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 24px;
+            color: #4da6ff;
+        }
+        p.subtitle {
+            margin: 0 0 15px 0;
+            color: #aaaaaa;
+            font-size: 14px;
+        }
+        #game-container {
+            position: relative;
+            background-color: #2d2d2d;
+            border: 2px solid #555;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-panel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            pointer-events: none;
+            min-width: 200px;
+        }
+        .stat {
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        button {
+            background-color: #4da6ff;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #3388dd;
+        }
+        .btn-secondary {
+            background-color: #555;
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background-color: #777;
+        }
+        #result-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px 40px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+            border: 2px solid #fff;
+        }
+        #result-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>DropDash: A Free-Fall Timing Game</h1>
+    <p class="subtitle">BSEMC Experiment Simulation - Press [Space] to Drop</p>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="ui-panel">
+            <div class="stat" id="stat-time">Time: 0.000 s</div>
+            <div class="stat" id="stat-height">Height: 20.00 m</div>
+            <div class="stat" id="stat-vy">Vel (y): 0.00 m/s</div>
+            <hr style="border-color: #555; margin: 10px 0;">
+            <div class="stat" id="stat-vx">Init Vel (x): 0.00 m/s</div>
+            <div class="stat" id="stat-plat">Platform X: 5.00 m</div>
+        </div>
+        <div id="result-overlay">
+            <div id="result-title">Landed!</div>
+            <div class="stat" id="res-time">Fall Time: -</div>
+            <div class="stat" id="res-vx">Req. Vx: ~4.48 m/s</div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button class="btn-secondary" onclick="adjustVx(-0.5)">◄ Dec Vx</button>
+        <button id="btn-drop" onclick="triggerDrop()">DROP BALL (Space)</button>
+        <button class="btn-secondary" onclick="adjustVx(0.5)">Inc Vx ►</button>
+        <button class="btn-secondary" style="margin-left: 20px;" onclick="resetGame()">Reset (R)</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Physics constants based on the problem
+        const g = 9.81;            // Gravity (m/s^2)
+        const h0 = 20.0;           // Initial height (m)
+        const x0 = 5.0;            // Platform initial X (m) from ball
+        const u = 2.0;             // Platform speed (m/s)
+        const platWidth = 2.0;     // Platform width (m)
+        
+        // Rendering constants
+        const scale = 20;          // 20 pixels = 1 meter
+        const groundY = 450;       // Canvas Y coordinate for the ground
+        const startXScreen = 100;  // Canvas X coordinate for Ball's 0 position
+
+        // State variables
+        let ballY, ballX, ballVy, ballVx, platformX;
+        let time, dropped, landed;
+        let lastTimestamp = 0;
+        let animationFrameId;
+
+        function init() {
+            ballY = h0;
+            ballX = 0;
+            ballVy = 0;
+            ballVx = 0; // Controlled by player
+            platformX = x0;
+            time = 0;
+            dropped = false;
+            landed = false;
+            
+            document.getElementById('result-overlay').style.display = 'none';
+            document.getElementById('btn-drop').disabled = false;
+            updateUI();
+            draw();
+        }
+
+        function adjustVx(amount) {
+            if (dropped) return;
+            ballVx += amount;
+            if (ballVx < 0) ballVx = 0; // Prevent negative for this specific experiment
+            updateUI();
+            draw();
+        }
+
+        function triggerDrop() {
+            if (dropped) return;
+            dropped = true;
+            document.getElementById('btn-drop').disabled = true;
+            lastTimestamp = performance.now();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            cancelAnimationFrame(animationFrameId);
+            init();
+        }
+
+        function gameLoop(timestamp) {
+            // Delta time in seconds (capped at 0.1s to prevent huge jumps if tab is inactive)
+            let dt = (timestamp - lastTimestamp) / 1000;
+            if (dt > 0.1) dt = 0.1; 
+            lastTimestamp = timestamp;
+
+            updatePhysics(dt);
+            draw();
+            updateUI();
+
+            if (!landed) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function updatePhysics(dt) {
+            // Platform moves regardless of drop state once game loop runs (or we can just move it constantly. 
+            // In the problem, platform moves continuously. Let's move it continuously if dropped.)
+            platformX += u * dt;
+
+            if (dropped && !landed) {
+                time += dt;
+                
+                // Kinematics integrations
+                ballVy += g * dt;            // v = v0 + at
+                ballY -= ballVy * dt;        // Distance falls (going down toward 0)
+                ballX += ballVx * dt;        // Horizontal movement
+
+                // Check collision with ground
+                if (ballY <= 0) {
+                    ballY = 0;
+                    landed = true;
+                    checkLanding();
+                }
+            }
+        }
+
+        function checkLanding() {
+            // Platform boundaries
+            let platLeft = platformX - (platWidth / 2);
+            let platRight = platformX + (platWidth / 2);
+            
+            let hit = (ballX >= platLeft && ballX <= platRight);
+            
+            const resOverlay = document.getElementById('result-overlay');
+            const resTitle = document.getElementById('result-title');
+            
+            resOverlay.style.display = 'block';
+            document.getElementById('res-time').innerText = `Fall Time: ${time.toFixed(3)} s (Theo: 2.020s)`;
+            
+            if (hit) {
+                resTitle.innerText = "Target Hit!";
+                resOverlay.style.borderColor = "#4caf50";
+            } else {
+                resTitle.innerText = "Missed!";
+                resOverlay.style.borderColor = "#f44336";
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Ground
+            ctx.fillStyle = '#555';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            ctx.strokeStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+
+            // Draw Initial Ball Drop Line (Reference x=0)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(startXScreen, groundY - (h0 * scale));
+            ctx.lineTo(startXScreen, groundY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw Platform
+            let pScreenX = startXScreen + (platformX * scale);
+            let pScreenW = platWidth * scale;
+            
+            ctx.fillStyle = '#3388dd';
+            ctx.fillRect(pScreenX - pScreenW/2, groundY - 10, pScreenW, 10);
+            // Draw Platform Center target
+            ctx.fillStyle = '#4caf50';
+            ctx.fillRect(pScreenX - 4, groundY - 10, 8, 10);
+
+            // Draw Ball
+            let bScreenX = startXScreen + (ballX * scale);
+            let bScreenY = groundY - (ballY * scale);
+            
+            ctx.fillStyle = '#ff4d4d';
+            ctx.beginPath();
+            ctx.arc(bScreenX, bScreenY, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+        }
+
+        function updateUI() {
+            document.getElementById('stat-time').innerText = `Time: ${time.toFixed(3)} s`;
+            document.getElementById('stat-height').innerText = `Height: ${Math.max(0, ballY).toFixed(2)} m`;
+            document.getElementById('stat-vy').innerText = `Vel (y): ${ballVy.toFixed(2)} m/s`;
+            document.getElementById('stat-vx').innerText = `Init Vel (x): ${ballVx.toFixed(2)} m/s`;
+            document.getElementById('stat-plat').innerText = `Platform X: ${platformX.toFixed(2)} m`;
+        }
+
+        // Keyboard Controls
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                triggerDrop();
+            }
+            if (e.code === 'ArrowRight') {
+                adjustVx(0.5);
+            }
+            if (e.code === 'ArrowLeft') {
+                adjustVx(-0.5);
+            }
+            if (e.code === 'KeyR') {
+                resetGame();
+            }
+        });
+
+        // Initialize game on load
+        init();
+    </script>
+</body>
+</html>
