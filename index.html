@@ -13,18 +13,22 @@
             flex-direction: column;
             align-items: center;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
+            box-sizing: border-box;
+            min-height: 100vh;
         }
         h1 {
-            margin-top: 0;
+            margin-top: 10px;
             margin-bottom: 5px;
-            font-size: 24px;
+            font-size: clamp(20px, 4vw, 26px);
             color: #4da6ff;
+            text-align: center;
         }
         p.subtitle {
             margin: 0 0 15px 0;
             color: #aaaaaa;
-            font-size: 14px;
+            font-size: clamp(12px, 2.5vw, 14px);
+            text-align: center;
         }
         #game-container {
             position: relative;
@@ -33,67 +37,141 @@
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             overflow: hidden;
+            width: 100%;
+            max-width: 800px;
         }
         canvas {
             display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 800 / 500;
         }
         #ui-panel {
             position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 10px;
             border-radius: 6px;
             border: 1px solid #444;
             pointer-events: none;
-            min-width: 200px;
+            min-width: 160px;
+            box-sizing: border-box;
         }
         .stat {
-            margin: 5px 0;
+            margin: 4px 0;
             font-family: monospace;
-            font-size: 14px;
+            font-size: clamp(11px, 2vw, 13px);
         }
         #controls {
-            margin-top: 20px;
+            margin-top: 15px;
             display: flex;
             gap: 10px;
+            justify-content: center;
             align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 800px;
         }
         button {
             background-color: #4da6ff;
             color: #000;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 12px 18px;
+            font-size: clamp(14px, 2vw, 16px);
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.1s;
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            -webkit-user-select: none;
+            user-select: none;
         }
         button:hover {
             background-color: #3388dd;
         }
-        .btn-secondary {
+        button:active {
+            transform: scale(0.98);
+        }
+        button:disabled {
             background-color: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #444;
             color: #fff;
+            border: 1px solid #666;
         }
         .btn-secondary:hover {
-            background-color: #777;
+            background-color: #555;
+        }
+        .btn-info {
+            background-color: #00b3b3;
+            color: #fff;
+        }
+        .btn-info:hover {
+            background-color: #008080;
+        }
+        /* Overlays Styles */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .modal-content {
+            background: #222;
+            border: 2px solid #4da6ff;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            text-align: left;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.7);
+        }
+        .modal-content h2 {
+            margin-top: 0;
+            color: #4da6ff;
+            font-size: 22px;
+            text-align: center;
+        }
+        .modal-content ul {
+            padding-left: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .modal-content li {
+            margin-bottom: 8px;
         }
         #result-overlay {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.85);
-            padding: 20px 40px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 30px;
             border-radius: 8px;
             text-align: center;
             display: none;
             border: 2px solid #fff;
+            z-index: 5;
+            width: 70%;
+            max-width: 350px;
         }
         #result-title {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
             margin-bottom: 10px;
         }
@@ -102,49 +180,65 @@
 <body>
 
     <h1>DropDash: A Free-Fall Timing Game</h1>
-    <p class="subtitle">BSEMC Experiment Simulation - Press [Space] to Drop</p>
+    <p class="subtitle">BSEMC Experiment Simulation - Perfect for Mobile or Desktop</p>
 
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
         <div id="ui-panel">
             <div class="stat" id="stat-time">Time: 0.000 s</div>
             <div class="stat" id="stat-height">Height: 20.00 m</div>
             <div class="stat" id="stat-vy">Vel (y): 0.00 m/s</div>
-            <hr style="border-color: #555; margin: 10px 0;">
+            <hr style="border-color: #444; margin: 8px 0;">
             <div class="stat" id="stat-vx">Init Vel (x): 0.00 m/s</div>
             <div class="stat" id="stat-plat">Platform X: 5.00 m</div>
         </div>
+
+        <div id="instructions-overlay" class="modal-overlay">
+            <div class="modal-content">
+                <h2>How to Play & Experiment Rules</h2>
+                <ul>
+                    <li><strong>The Scenario:</strong> A ball is suspended at an initial height of <strong>h₀ = 20.0 m</strong>. A platform center initializes at <strong>x₀ = 5.0 m</strong>, moving constantly right at <strong>u = 2.0 m/s</strong>.</li>
+                    <li><strong>The Physics Twist:</strong> Dropping the ball directly at t=0 causes a complete miss, because it takes exactly <strong>2.020 s</strong> to land, placing the platform too far forward.</li>
+                    <li><strong>Your Mission:</strong> Adjust the ball's initial horizontal velocity (<strong>Vₓ</strong>) using the buttons below. Try setting it to the calculated module sweet-spot of <strong>~4.48 m/s</strong> to land a perfect center hit!</li>
+                </ul>
+                <button style="width: 100%; margin-top: 10px;" onclick="closeInstructions()">Start Simulation</button>
+            </div>
+        </div>
+
         <div id="result-overlay">
             <div id="result-title">Landed!</div>
             <div class="stat" id="res-time">Fall Time: -</div>
-            <div class="stat" id="res-vx">Req. Vx: ~4.48 m/s</div>
+            <div class="stat" id="res-vx">Target Vₓ Goal: 4.48 m/s</div>
+            <button style="margin-top: 15px; width: 100%;" class="btn-secondary" onclick="resetGame()">Try Again</button>
         </div>
     </div>
 
     <div id="controls">
-        <button class="btn-secondary" onclick="adjustVx(-0.5)">◄ Dec Vx</button>
-        <button id="btn-drop" onclick="triggerDrop()">DROP BALL (Space)</button>
-        <button class="btn-secondary" onclick="adjustVx(0.5)">Inc Vx ►</button>
-        <button class="btn-secondary" style="margin-left: 20px;" onclick="resetGame()">Reset (R)</button>
+        <button class="btn-secondary" onclick="adjustVx(-0.5)">◄ Dec Vₓ</button>
+        <button id="btn-drop" onclick="triggerDrop()">DROP (Space)</button>
+        <button class="btn-secondary" onclick="adjustVx(0.5)">Inc Vₓ ►</button>
+        <button class="btn-info" onclick="showInstructions()">How to Play</button>
+        <button class="btn-secondary" onclick="resetGame()">Reset (R)</button>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Physics constants based on the problem
-        const g = 9.81;            // Gravity (m/s^2)
-        const h0 = 20.0;           // Initial height (m)
-        const x0 = 5.0;            // Platform initial X (m) from ball
-        const u = 2.0;             // Platform speed (m/s)
-        const platWidth = 2.0;     // Platform width (m)
+        // Physics constants matching Module settings explicitly
+        const g = 9.81;            // Acceleration due to gravity (m/s^2)
+        const h0 = 20.0;           // Initial elevation (meters)
+        const x0 = 5.0;            // Initial target platform positioning (meters)
+        const u = 2.0;             // Horizontal platform motion rate (m/s)
+        const platWidth = 2.0;     // Total platform surface length (meters)
         
-        // Rendering constants
-        const scale = 20;          // 20 pixels = 1 meter
-        const groundY = 450;       // Canvas Y coordinate for the ground
-        const startXScreen = 100;  // Canvas X coordinate for Ball's 0 position
+        // Dynamic pixel rendering setup
+        const scale = 20;          // Metric visualization ratio: 20 pixels = 1 meter
+        const groundY = 440;       // Ground elevation base line within 500px canvas height
+        const startXScreen = 150;  // Offset positioning representing the x=0 coordinate drop line
 
-        // State variables
+        // State machine values
         let ballY, ballX, ballVy, ballVx, platformX;
         let time, dropped, landed;
         let lastTimestamp = 0;
@@ -154,7 +248,7 @@
             ballY = h0;
             ballX = 0;
             ballVy = 0;
-            ballVx = 0; // Controlled by player
+            ballVx = 0; 
             platformX = x0;
             time = 0;
             dropped = false;
@@ -169,13 +263,13 @@
         function adjustVx(amount) {
             if (dropped) return;
             ballVx += amount;
-            if (ballVx < 0) ballVx = 0; // Prevent negative for this specific experiment
+            if (ballVx < 0) ballVx = 0; // Boundary limit to prevent negative mapping
             updateUI();
             draw();
         }
 
         function triggerDrop() {
-            if (dropped) return;
+            if (dropped || document.getElementById('instructions-overlay').style.display === 'flex') return;
             dropped = true;
             document.getElementById('btn-drop').disabled = true;
             lastTimestamp = performance.now();
@@ -187,10 +281,18 @@
             init();
         }
 
+        function showInstructions() {
+            if (dropped && !landed) return; // Prevent menu disruptions mid-simulation
+            document.getElementById('instructions-overlay').style.display = 'flex';
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructions-overlay').style.display = 'none';
+        }
+
         function gameLoop(timestamp) {
-            // Delta time in seconds (capped at 0.1s to prevent huge jumps if tab is inactive)
             let dt = (timestamp - lastTimestamp) / 1000;
-            if (dt > 0.1) dt = 0.1; 
+            if (dt > 0.1) dt = 0.1; // Delta truncation constraint for performance stability
             lastTimestamp = timestamp;
 
             updatePhysics(dt);
@@ -203,19 +305,18 @@
         }
 
         function updatePhysics(dt) {
-            // Platform moves regardless of drop state once game loop runs (or we can just move it constantly. 
-            // In the problem, platform moves continuously. Let's move it continuously if dropped.)
+            // Platform tracks linear uniform horizontal displacement continuously 
             platformX += u * dt;
 
             if (dropped && !landed) {
                 time += dt;
                 
-                // Kinematics integrations
-                ballVy += g * dt;            // v = v0 + at
-                ballY -= ballVy * dt;        // Distance falls (going down toward 0)
-                ballX += ballVx * dt;        // Horizontal movement
+                // Kinematics calculations matching the analytical structure
+                ballVy += g * dt;            
+                ballY -= ballVy * dt;        
+                ballX += ballVx * dt;        
 
-                // Check collision with ground
+                // Surface termination boundary conditional logic
                 if (ballY <= 0) {
                     ballY = 0;
                     landed = true;
@@ -225,81 +326,87 @@
         }
 
         function checkLanding() {
-            // Platform boundaries
             let platLeft = platformX - (platWidth / 2);
             let platRight = platformX + (platWidth / 2);
-            
             let hit = (ballX >= platLeft && ballX <= platRight);
             
             const resOverlay = document.getElementById('result-overlay');
             const resTitle = document.getElementById('result-title');
             
             resOverlay.style.display = 'block';
-            document.getElementById('res-time').innerText = `Fall Time: ${time.toFixed(3)} s (Theo: 2.020s)`;
+            document.getElementById('res-time').innerText = `Fall Time: ${time.toFixed(3)} s (Expected: 2.020s)`;
             
             if (hit) {
-                resTitle.innerText = "Target Hit!";
+                resTitle.innerText = "🎯 Target Hit!";
+                resTitle.style.color = "#4caf50";
                 resOverlay.style.borderColor = "#4caf50";
             } else {
-                resTitle.innerText = "Missed!";
+                resTitle.innerText = "❌ Missed Target!";
+                resTitle.style.color = "#f44336";
                 resOverlay.style.borderColor = "#f44336";
             }
         }
 
         function draw() {
-            // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Ground
-            ctx.fillStyle = '#555';
+            // Terrain Rendering
+            ctx.fillStyle = '#444';
             ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(0, groundY);
             ctx.lineTo(canvas.width, groundY);
             ctx.stroke();
 
-            // Draw Initial Ball Drop Line (Reference x=0)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.setLineDash([5, 5]);
+            // Tracking Reference Axis Line (x = 0 Projection)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 6]);
             ctx.beginPath();
             ctx.moveTo(startXScreen, groundY - (h0 * scale));
             ctx.lineTo(startXScreen, groundY);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Draw Platform
+            // Linear Platform Render Profile
             let pScreenX = startXScreen + (platformX * scale);
             let pScreenW = platWidth * scale;
-            
             ctx.fillStyle = '#3388dd';
-            ctx.fillRect(pScreenX - pScreenW/2, groundY - 10, pScreenW, 10);
-            // Draw Platform Center target
+            ctx.fillRect(pScreenX - pScreenW/2, groundY - 12, pScreenW, 12);
+            
+            // Critical Evaluation Center Target Goal Line
             ctx.fillStyle = '#4caf50';
-            ctx.fillRect(pScreenX - 4, groundY - 10, 8, 10);
+            ctx.fillRect(pScreenX - 3, groundY - 12, 6, 12);
 
-            // Draw Ball
+            // Ball Object Rendering
             let bScreenX = startXScreen + (ballX * scale);
             let bScreenY = groundY - (ballY * scale);
-            
             ctx.fillStyle = '#ff4d4d';
             ctx.beginPath();
-            ctx.arc(bScreenX, bScreenY, 8, 0, Math.PI * 2);
+            ctx.arc(bScreenX, bScreenY, 10, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
             ctx.stroke();
         }
 
         function updateUI() {
+            // Vertical velocity signature updated to match the downward vector convention (- sign)
+            let displayVy = ballVy > 0 ? -ballVy : 0;
+
             document.getElementById('stat-time').innerText = `Time: ${time.toFixed(3)} s`;
             document.getElementById('stat-height').innerText = `Height: ${Math.max(0, ballY).toFixed(2)} m`;
-            document.getElementById('stat-vy').innerText = `Vel (y): ${ballVy.toFixed(2)} m/s`;
+            document.getElementById('stat-vy').innerText = `Vel (y): ${displayVy.toFixed(2)} m/s`;
             document.getElementById('stat-vx').innerText = `Init Vel (x): ${ballVx.toFixed(2)} m/s`;
             document.getElementById('stat-plat').innerText = `Platform X: ${platformX.toFixed(2)} m`;
         }
 
-        // Keyboard Controls
+        // Cross-platform key inputs for desktop environments
         window.addEventListener('keydown', (e) => {
+            if (document.getElementById('instructions-overlay').style.display === 'flex') return;
+            
             if (e.code === 'Space') {
                 e.preventDefault();
                 triggerDrop();
@@ -315,7 +422,7 @@
             }
         });
 
-        // Initialize game on load
+        // Initialize execution setup
         init();
     </script>
 </body>
